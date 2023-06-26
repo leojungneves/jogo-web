@@ -1,19 +1,17 @@
-#include <DHT.h>
-#include <DHT_U.h>
 #include <WiFi.h>
 #include <WiFiManager.h>
 #include <PubSubClient.h>
+#include <DHT.h>
 
 #define rainSensorPin 18
 #define DHTTYPE DHT11
 #define DHTPIN 4
-
 DHT dht(DHTPIN, DHTTYPE);
 
 unsigned long delay1 = 0;
 
 // Update these with values suitable for your network.
-const char* mqtt_server = "wss://ifsc.digital/ws/";
+const char* mqtt_server = "ifsc.digital";
 
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -21,9 +19,9 @@ unsigned long lastMsg = 0;
 #define MSG_BUFFER_SIZE (50)
 char msg[MSG_BUFFER_SIZE];
 
-int LED;
-int LED1;
-int LED2;
+char LED;
+char LED1;
+char LED2;
 
 void setup_wifi() {
   Serial.begin(115200);
@@ -35,23 +33,10 @@ void setup_wifi() {
 
   if (!res) {
     Serial.println("Failed to connect");
-  } else {
+  }
+  else {
     Serial.println("Connected");
   }
-}
-
-void setLedState(int ledPin, const char* ledName, bool state) {
-  digitalWrite(ledPin, state ? HIGH : LOW);  // Define o estado do LED com base no parâmetro "state"
-
-  if (state) {
-    snprintf(msg, MSG_BUFFER_SIZE, "O %s está aceso", ledName);
-  } else {
-    snprintf(msg, MSG_BUFFER_SIZE, "O %s está apagado", ledName);
-  }
-
-  Serial.print("Publishing message: ");
-  Serial.println(msg);
-  client.publish("leojung/led", msg);
 }
 
 void callback(char* topic, byte* payload, unsigned int length) {
@@ -63,36 +48,50 @@ void callback(char* topic, byte* payload, unsigned int length) {
   }
   Serial.println();
 
-  // Switch on/off the LEDs based on the received payload
-  if (strcmp(topic, "leojung/led") == 0) {
-    char command = (char)payload[0];
-    switch (command) {
-      case 'U':
-        setLedState(LED, "LED", true);
-        break;
-      case 'u':
-        setLedState(LED, "LED", false);
-        break;
-      case 'D':
-        setLedState(LED1, "LED1", true);
-        break;
-      case 'd':
-        setLedState(LED1, "LED1", false);
-        break;
-      case 'T':
-        setLedState(LED2, "LED2", true);
-        break;
-      case 't':
-        setLedState(LED2, "LED2", false);
-        break;
-      default:
-        snprintf(msg, MSG_BUFFER_SIZE, "Comando inválido");
-        Serial.print("Publishing message: ");
-        Serial.println(msg);
-        client.publish("leojung/led", msg);
-        break;
-    }
+  // Switch on the LED if an 'L' was received as the first character
+  if ((char)payload[0] == 'L') {
+    digitalWrite(LED, HIGH);
+    snprintf(msg, MSG_BUFFER_SIZE, "O LED está aceso");
+    Serial.print("Publishing message: ");
+    Serial.println(msg);
+    client.publish("leojung/led", msg);
   }
+  else if ((char)payload[0] == 'l') {
+    digitalWrite(LED, LOW);
+    snprintf(msg, MSG_BUFFER_SIZE, "O LED está apagado");
+    Serial.print("Publishing message: ");
+    Serial.println(msg);
+    client.publish("leojung/led", msg);
+  }
+  else if ((char)payload[0] == 'J') {
+    digitalWrite(LED1, HIGH);
+    snprintf(msg, MSG_BUFFER_SIZE, "O LED1 está acesso");
+    Serial.print("Publishing message: ");
+    Serial.println(msg);
+    client.publish("leojung/led", msg);
+  }
+  else if ((char)payload[0] == 'j') {
+    digitalWrite(LED1, LOW);
+    snprintf(msg, MSG_BUFFER_SIZE, "O LED1 está apagado");
+    Serial.print("Publishing message: ");
+    Serial.println(msg);
+    client.publish("leojung/led", msg);
+  }
+  else if ((char)payload[0] == 'G') {
+    digitalWrite(LED2, HIGH);
+    snprintf(msg, MSG_BUFFER_SIZE, "O LED2 está acesso");
+    Serial.print("Publishing message: ");
+    Serial.println(msg);
+    client.publish("leojung/led", msg);
+  }
+  else if ((char)payload[0] == 'g') {
+    digitalWrite(LED2, LOW);
+    snprintf(msg, MSG_BUFFER_SIZE, "O LED2 está apagado");
+    Serial.print("Publishing message: ");
+    Serial.println(msg);
+    client.publish("leojung/led", msg);
+  }
+  // Handle MQTT messages if needed
 }
 
 void reconnect() {
@@ -103,8 +102,9 @@ void reconnect() {
 
     if (client.connect(clientId.c_str())) {
       Serial.println("Connected");
-      client.subscribe("leojung/led");
-    } else {
+      client.subscribe("leojung/publisher");
+    }
+    else {
       Serial.print("Failed, rc=");
       Serial.print(client.state());
       Serial.println(" Try again in 5 seconds");
@@ -115,8 +115,9 @@ void reconnect() {
 
 void setup() {
   LED = 5;
-  LED1 = 34;
-  LED2 = 35;
+  LED1 = 23;
+  LED2 = 22;
+  
   pinMode(rainSensorPin, INPUT);
   pinMode(LED, OUTPUT);
   pinMode(LED1, OUTPUT);
@@ -149,16 +150,18 @@ void loop() {
 
   int rainSensorValue = digitalRead(rainSensorPin);
 
-  if ((millis() - delay1) > 3000) {
-    if (rainSensorValue == HIGH) {
-      Serial.println("Sem chuva");
-      snprintf(msg, MSG_BUFFER_SIZE, "Sem Chuva");
-      client.publish("leojung/estadochuva", msg);
-    } else {
-      Serial.println("Com Chuva");
-      snprintf(msg, MSG_BUFFER_SIZE, "Com Chuva");
-      client.publish("leojung/estadochuva", msg);
-    }
+  if ((millis() - delay1 ) > 3000){
+  if (rainSensorValue == HIGH) {
+    Serial.println("Sem chuva");
+    snprintf(msg, MSG_BUFFER_SIZE, "Sem Chuva");
+    client.publish("leojung/estadochuva", msg);
+  }
+  else {
+    Serial.println("Com Chuva");
+    snprintf(msg, MSG_BUFFER_SIZE, "Com Chuva");
+    client.publish("leojung/estadochuva", msg);
+  }
+
     delay1 = millis();
   }
 
